@@ -14,6 +14,7 @@ import (
 var (
 	wait int
 	port int
+	ip   string
 )
 
 // queryCmd represents the query command
@@ -28,9 +29,19 @@ var queryCmd = &cobra.Command{
 
 		log.Printf("Sending request address=%s ifaces=%s", dstAddress, ifaces)
 
+		var ifacesConfigs []runtime.InterfaceConfig
+		for _, iface := range ifaces {
+			ifaceConfig := runtime.InterfaceConfig{
+				Name: iface,
+				Port: port,
+				IP:   ip,
+			}
+			ifacesConfigs = append(ifacesConfigs, ifaceConfig)
+		}
+
 		nodes := runtime.NewNodes(&runtime.Config{})
 
-		collector := respond.NewCollector(nil, nodes, []string{}, ifaces, port)
+		collector := respond.NewCollector(nil, nodes, []string{}, ifacesConfigs)
 		defer collector.Close()
 		collector.SendPacket(dstAddress)
 
@@ -46,4 +57,5 @@ func init() {
 	RootCmd.AddCommand(queryCmd)
 	queryCmd.Flags().IntVar(&wait, "wait", 1, "Seconds to wait for a response")
 	queryCmd.Flags().IntVar(&port, "port", 0, "define a port to listen (if not set or set to 0 the kernel will use a random free port at its own)")
+	queryCmd.Flags().StringVar(&ip, "ip", "", "ip is the own address which is used for sending (optional - without definition used the link-local address)")
 }

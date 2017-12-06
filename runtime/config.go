@@ -6,15 +6,21 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+type InterfaceConfig struct {
+	Name           string `toml:"name"`
+	Port           int    `toml:"port"`
+	IP             string `toml:"ip"`
+	MulticastGroup string `toml:"multicast"`
+}
+
 //Config the config File of this daemon
 type Config struct {
 	Respondd struct {
-		Enable          bool     `toml:"enable"`
-		Synchronize     Duration `toml:"synchronize"`
-		Interfaces      []string `toml:"interfaces"`
-		Sites           []string `toml:"sites"`
-		Port            int      `toml:"port"`
-		CollectInterval Duration `toml:"collect_interval"`
+		Enable          bool              `toml:"enable"`
+		Synchronize     Duration          `toml:"synchronize"`
+		Sites           []string          `toml:"sites"`
+		CollectInterval Duration          `toml:"collect_interval"`
+		Interfaces      []InterfaceConfig `toml:"interfaces"`
 	}
 	Webserver struct {
 		Enable  bool   `toml:"enable"`
