@@ -120,7 +120,21 @@ func (nodes *Nodes) NodeLinks(node *Node) (result []Link) {
 					SourceMAC: sourceMAC,
 					TargetID:  neighbourID,
 					TargetMAC: neighbourMAC,
-					TQ:        link.Tq,
+					TQ:        float32(link.Tq) / 255.0,
+				})
+			}
+		}
+	}
+	if nodeinfo := node.Nodeinfo; nodeinfo != nil {
+		ownMAC := nodeinfo.Network.Mac
+		for mac, link := range neighbours.Babel {
+			if neighbourID := nodes.ifaceToNodeID[mac]; neighbourID != "" {
+				result = append(result, Link{
+					SourceID:  neighbours.NodeID,
+					SourceMAC: ownMAC,
+					TargetID:  neighbourID,
+					TargetMAC: mac,
+					TQ:        1.0 - (float32(link.Cost) / 65535.0),
 				})
 			}
 		}

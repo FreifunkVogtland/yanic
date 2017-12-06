@@ -55,9 +55,9 @@ func transform(nodes *runtime.Nodes) *Meshviewer {
 			}
 			if link := links[key]; link != nil {
 				if switchSourceTarget {
-					link.TargetTQ = float32(linkOrigin.TQ) / 255.0
+					link.TargetTQ = linkOrigin.TQ
 				} else {
-					link.SourceTQ = float32(linkOrigin.TQ) / 255.0
+					link.SourceTQ = linkOrigin.TQ
 				}
 				continue
 			}
@@ -65,15 +65,14 @@ func transform(nodes *runtime.Nodes) *Meshviewer {
 			if linkType == "" {
 				linkType = "other"
 			}
-			tq := float32(linkOrigin.TQ) / 255.0
 			link := &Link{
 				Type:      linkType,
 				Source:    linkOrigin.SourceID,
 				SourceMAC: linkOrigin.SourceMAC,
 				Target:    linkOrigin.TargetID,
 				TargetMAC: linkOrigin.TargetMAC,
-				SourceTQ:  tq,
-				TargetTQ:  tq,
+				SourceTQ:  linkOrigin.TQ,
+				TargetTQ:  linkOrigin.TQ,
 			}
 			if switchSourceTarget {
 				link.Source = linkOrigin.TargetID

@@ -221,7 +221,7 @@ func (coll *Collector) sender() {
 func (coll *Collector) parser() {
 	for obj := range coll.queue {
 		if data, err := obj.parse(); err != nil {
-			log.Println("unable to decode response from", obj.Address.String(), err, "\n", string(obj.Raw))
+			log.Println("unable to decode response from", obj.Address.String(), err)
 		} else {
 			coll.saveResponse(obj.Address, data)
 		}
