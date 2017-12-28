@@ -3,8 +3,8 @@ package data
 // Neighbours struct
 type Neighbours struct {
 	Batadv map[string]BatadvNeighbours `json:"batadv"`
+	Babel  map[string]BabelNeighbours  `json:"babel"`
 	LLDP   map[string]LLDPNeighbours   `json:"lldp"`
-	Babel  map[string]BabelLink        `json:"babel"`
 	//WifiNeighbours map[string]WifiNeighbours   `json:"wifi"`
 	NodeID string `json:"node_id"`
 }
@@ -36,7 +36,6 @@ type BabelLink struct {
 	TXCost           int    `json:"txcost"`
 	Cost             int    `json:"cost"`
 	Reachability     int    `json:"reachability"`
-	InterfaceName    string `json:"ifname"`
 	AddressLinkLocal string `json:"address-ll"`
 	AddressMesh      string `json:"address-mesh"`
 }
@@ -44,6 +43,12 @@ type BabelLink struct {
 // BatadvNeighbours struct
 type BatadvNeighbours struct {
 	Neighbours map[string]BatmanLink `json:"neighbours"`
+}
+
+// BabelNeighbours struct
+type BabelNeighbours struct {
+	InterfaceName string               `json:"ifname"`
+	Neighbours    map[string]BabelLink `json:"neighbours"`
 }
 
 // WifiNeighbours struct
