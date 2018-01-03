@@ -14,9 +14,12 @@ type testConn struct {
 	countClose int
 	countPrune int
 	sync.Mutex
+	PruneWG sync.WaitGroup
+	CloseWG sync.WaitGroup
 }
 
 func (c *testConn) Close() {
+	c.CloseWG.Done()
 	c.Lock()
 	c.countClose++
 	c.Unlock()
@@ -27,6 +30,7 @@ func (c *testConn) GetClose() int {
 	return c.countClose
 }
 func (c *testConn) PruneNodes(time.Duration) {
+	c.PruneWG.Done()
 	c.Lock()
 	c.countPrune++
 	c.Unlock()
@@ -56,14 +60,15 @@ func TestStart(t *testing.T) {
 	assert.NotNil(quit)
 
 	assert.Equal(0, conn.GetPruneNodes())
-	time.Sleep(time.Millisecond * 12)
+	conn.PruneWG.Add(1)
+	conn.PruneWG.Wait()
 	assert.Equal(1, conn.GetPruneNodes())
 
 	assert.Equal(0, conn.GetClose())
+	conn.CloseWG.Add(1)
 	Close(conn)
+	conn.PruneWG.Wait()
 	assert.NotNil(quit)
 	assert.Equal(1, conn.GetClose())
-
-	time.Sleep(time.Millisecond * 12) // to reach timer.Stop() line
 
 }

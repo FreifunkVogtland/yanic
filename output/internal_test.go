@@ -13,12 +13,14 @@ type testConn struct {
 	Output
 	countSave int
 	sync.Mutex
+	sync.WaitGroup
 }
 
 func (c *testConn) Save(nodes *runtime.Nodes) {
 	c.Lock()
 	c.countSave++
 	c.Unlock()
+	c.Done()
 }
 func (c *testConn) Get() int {
 	c.Lock()
@@ -47,10 +49,12 @@ func TestStart(t *testing.T) {
 	assert.NotNil(quit)
 
 	assert.Equal(0, conn.Get())
-	time.Sleep(time.Millisecond * 12)
+	conn.Add(1)
+	conn.Wait()
 	assert.Equal(1, conn.Get())
 
-	time.Sleep(time.Millisecond * 12)
+	conn.Add(1)
+	conn.Wait()
 	Close()
 	assert.Equal(2, conn.Get())
 
