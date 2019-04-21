@@ -1,0 +1,27 @@
+Source: yanic
+Section: devel
+Priority: optional
+Maintainer: Sven Eckelmann <sven@narfation.org>
+Build-Depends: debhelper (>= 11),
+               dh-golang,
+               golang-any,
+               golang-github-fgrosse-graphigo-dev,
+               golang-github-naoina-toml-dev,
+               golang-github-nytimes-gziphandler-dev,
+               golang-github-pkg-errors-dev,
+               golang-github-spf13-cobra-dev,
+               golang-github-stretchr-testify-dev,
+               golang-github-influxdb-influxdb-dev,
+Standards-Version: 4.2.1
+Homepage: https://github.com/FreifunkBremen/yanic
+Vcs-Browser: https://github.com/FreifunkVogtland/yanic.git -b debian/stretch
+Vcs-Git: https://github.com/FreifunkVogtland/yanic
+XS-Go-Import-Path: github.com/FreifunkBremen/yanic
+Testsuite: autopkgtest-pkg-go
+
+Package: yanic
+Architecture: any
+Built-Using: ${misc:Built-Using}
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Description: Yet another node info collector  - for respondd to be used with meshviewer to Grafana (with influxdb or graphite)

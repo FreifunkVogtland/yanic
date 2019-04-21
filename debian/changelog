@@ -1,0 +1,6 @@
+yanic (0.0.2+git20181007.4031d82-1) stretch; urgency=medium
+
+  * Initial release
+  * Build against buster go sources (due to incompatible influxdb in stretch)
+
+ -- Sven Eckelmann <sven@narfation.org>  Sat, 20 Apr 2019 00:58:57 +0200
