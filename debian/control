@@ -14,7 +14,7 @@ Build-Depends: debhelper (>= 11),
                golang-github-influxdb-influxdb-dev,
 Standards-Version: 4.2.1
 Homepage: https://github.com/FreifunkBremen/yanic
-Vcs-Browser: https://github.com/FreifunkVogtland/yanic.git -b debian/stretch
+Vcs-Browser: https://github.com/FreifunkVogtland/yanic.git -b debian/buster
 Vcs-Git: https://github.com/FreifunkVogtland/yanic
 XS-Go-Import-Path: github.com/FreifunkBremen/yanic
 Testsuite: autopkgtest-pkg-go

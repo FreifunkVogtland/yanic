@@ -1,3 +1,9 @@
+yanic (0.0.2+git20181007.4031d82-2) buster; urgency=medium
+
+  * Build for Debian Buster
+
+ -- Sven Eckelmann <sven@narfation.org>  Sun, 07 Jul 2019 11:03:50 +0200
+
 yanic (0.0.2+git20181007.4031d82-1) stretch; urgency=medium
 
   * Initial release
