@@ -1,0 +1,7 @@
+0001-Revert-not-export-logging-stdout-stderr-hook.patch
+0002-Revert-TEST-improve-runtime.patch
+0003-Revert-TASK-improve-logging.patch
+0004-Revert-update-dep.patch
+0005-Revert-TASK-update-influxdb-client.patch
+Revert-DOCS-improve-geojson.patch
+Revert-TASK-Add-output-for-geojson-nodes-only.patch

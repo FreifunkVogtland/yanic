@@ -1,0 +1,143 @@
+From: Sven Eckelmann <sven@narfation.org>
+Date: Sun, 6 Oct 2019 13:18:57 +0200
+Subject: Revert "[TEST] improve runtime"
+
+This reverts commit 6e745bf78fba1d1d88161eb02cd74233fa652be3.
+---
+ runtime/nodes_test.go              | 70 ++++++--------------------------------
+ runtime/testdata/nodes-broken.json |  4 ---
+ 2 files changed, 11 insertions(+), 63 deletions(-)
+ delete mode 100644 runtime/testdata/nodes-broken.json
+
+diff --git a/runtime/nodes_test.go b/runtime/nodes_test.go
+index a6c6c1d..0212afc 100644
+--- a/runtime/nodes_test.go
++++ b/runtime/nodes_test.go
+@@ -55,8 +55,8 @@ func TestLoadAndSave(t *testing.T) {
+ 	// not autoload without StatePath
+ 	NewNodes(config)
+ 
+-	// Test unmarshalable
+-	config.StatePath = "testdata/nodes-broken.json"
++	// Test unmarshalable /dev/null - autolead with StatePath
++	config.StatePath = "/dev/null"
+ 	nodes := NewNodes(config)
+ 	// Test unopen able
+ 	config.StatePath = "/root/nodes.json"
+@@ -71,8 +71,8 @@ func TestLoadAndSave(t *testing.T) {
+ 	os.Remove(tmpfile.Name())
+ 
+ 	assert.Panics(func() {
+-		SaveJSON(nodes, "/proc/a")
+-		// "open /proc/a.tmp: permission denied",
++		SaveJSON(nodes, "/dev/null")
++		// "open /dev/null.tmp: permission denied",
+ 	})
+ 
+ 	tmpfile, _ = ioutil.TempFile("/tmp", "nodes")
+@@ -162,14 +162,6 @@ func TestLinksNodes(t *testing.T) {
+ 	}
+ 	assert.Len(nodes.List, 0)
+ 
+-	nodes.Update("f4f26dd7a300", &data.ResponseData{
+-		Nodeinfo: &data.Nodeinfo{
+-			NodeID: "f4f26dd7a300",
+-			Network: data.Network{
+-				Mac: "f4:f2:6d:d7:a3:00",
+-			},
+-		},
+-	})
+ 	nodes.Update("f4f26dd7a30a", &data.ResponseData{
+ 		Nodeinfo: &data.Nodeinfo{
+ 			NodeID: "f4f26dd7a30a",
+@@ -177,37 +169,11 @@ func TestLinksNodes(t *testing.T) {
+ 				Mac: "f4:f2:6d:d7:a3:0a",
+ 			},
+ 		},
+-		Neighbours: &data.Neighbours{
+-			NodeID: "f4f26dd7a30a",
+-			Babel: map[string]data.BabelNeighbours{
+-				"vx_mesh_lan": {
+-					LinkLocalAddress: "fe80::2",
+-					Neighbours: map[string]data.BabelLink{
+-						"fe80::1337": {
+-							Cost: 26214,
+-						},
+-					},
+-				},
+-			},
+-		},
+ 	})
+ 
+ 	nodes.Update("f4f26dd7a30b", &data.ResponseData{
+ 		Nodeinfo: &data.Nodeinfo{
+ 			NodeID: "f4f26dd7a30b",
+-			Network: data.Network{
+-				Mesh: map[string]*data.NetworkInterface{
+-					"babel": {
+-						Interfaces: struct {
+-							Wireless []string `json:"wireless,omitempty"`
+-							Other    []string `json:"other,omitempty"`
+-							Tunnel   []string `json:"tunnel,omitempty"`
+-						}{
+-							Other: []string{"fe80::1337"},
+-						},
+-					},
+-				},
+-			},
+ 		},
+ 		Neighbours: &data.Neighbours{
+ 			NodeID: "f4f26dd7a30b",
+@@ -223,35 +189,21 @@ func TestLinksNodes(t *testing.T) {
+ 		},
+ 	})
+ 
+-	// no neighbours nodeid
+-	node := nodes.List["f4f26dd7a300"]
++	node := nodes.List["f4f26dd7a30a"]
+ 	assert.NotNil(node)
+ 	links := nodes.NodeLinks(node)
+ 	assert.Len(links, 0)
+ 
+-	// babel link
+-	node = nodes.List["f4f26dd7a30a"]
+-	assert.NotNil(node)
+-	links = nodes.NodeLinks(node)
+-	assert.Len(links, 1)
+-	link := links[0]
+-	assert.Equal("f4f26dd7a30a", link.SourceID)
+-	assert.Equal("fe80::2", link.SourceAddress)
+-	assert.Equal("f4f26dd7a30b", link.TargetID)
+-	assert.Equal("fe80::1337", link.TargetAddress)
+-	assert.Equal(float32(0.6), link.TQ)
+-
+-	// batman link
+ 	node = nodes.List["f4f26dd7a30b"]
+ 	assert.NotNil(node)
+ 	links = nodes.NodeLinks(node)
+ 	assert.Len(links, 1)
+-	link = links[0]
+-	assert.Equal("f4f26dd7a30b", link.SourceID)
+-	assert.Equal("f4:f2:6d:d7:a3:0b", link.SourceAddress)
+-	assert.Equal("f4f26dd7a30a", link.TargetID)
+-	assert.Equal("f4:f2:6d:d7:a3:0a", link.TargetAddress)
+-	assert.Equal(float32(0.8), link.TQ)
++	link := links[0]
++	assert.Equal(link.SourceID, "f4f26dd7a30b")
++	assert.Equal(link.SourceAddress, "f4:f2:6d:d7:a3:0b")
++	assert.Equal(link.TargetID, "f4f26dd7a30a")
++	assert.Equal(link.TargetAddress, "f4:f2:6d:d7:a3:0a")
++	assert.Equal(link.TQ, float32(0.8))
+ 
+ 	nodeid := nodes.GetNodeIDbyAddress("f4:f2:6d:d7:a3:0a")
+ 	assert.Equal("f4f26dd7a30a", nodeid)
+diff --git a/runtime/testdata/nodes-broken.json b/runtime/testdata/nodes-broken.json
+deleted file mode 100644
+index 2ff2996..0000000
+--- a/runtime/testdata/nodes-broken.json
++++ /dev/null
+@@ -1,4 +0,0 @@
+-{
+-	// make it invalid by this comment
+-	"affe": 3
+-}

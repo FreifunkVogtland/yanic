@@ -1,0 +1,21 @@
+From: Sven Eckelmann <sven@narfation.org>
+Date: Sun, 6 Oct 2019 13:42:31 +0200
+Subject: Revert "[DOCS] improve geojson"
+
+This reverts commit a466ada1092ae2a7b97ec6d09186590e3b391f95.
+---
+ docs/docs_configuration.md | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/docs/docs_configuration.md b/docs/docs_configuration.md
+index 06e3658..820ddaf 100644
+--- a/docs/docs_configuration.md
++++ b/docs/docs_configuration.md
+@@ -391,7 +391,6 @@ longitude_max = 39.72
+ {% method %}
+ The geojson output produces a geojson file which contains the location data of all monitored nodes to be used to visualize the location of the nodes.
+ It is optimized to be used with [UMap](https://github.com/umap-project/umap) but should work with other tools as well.
+-
+ Here is a public demo provided by Freifunk Muenchen: http://u.osmfr.org/m/328494/
+ {% sample lang="toml" %}
+ ```toml

@@ -1,0 +1,793 @@
+From: Sven Eckelmann <sven@narfation.org>
+Date: Sun, 6 Oct 2019 13:19:01 +0200
+Subject: Revert "[TASK] improve logging"
+
+This reverts commit 27fde7cd8c4ed1d5c6cf6822e67883df5e59be30.
+---
+ cmd/config.go                         |  3 +--
+ cmd/import.go                         |  8 ++++----
+ cmd/query.go                          | 17 ++++++----------
+ cmd/root.go                           | 14 ++++++-------
+ cmd/serve.go                          | 15 +++++++-------
+ database/all/connection.go            |  5 ++---
+ database/graphite/database.go         |  7 +++----
+ database/influxdb/database.go         | 13 +++++-------
+ database/logging/file.go              |  3 ++-
+ database/respondd/main.go             | 11 +++++-----
+ main.go                               | 37 +---------------------------------
+ output/all/output.go                  |  5 ++---
+ output/filter/filter.go               |  6 ++----
+ output/meshviewer-ffrgb/meshviewer.go | 11 ++--------
+ output/meshviewer/output.go           |  3 +--
+ respond/collector.go                  | 38 +++++++++++------------------------
+ rrd/rrd.go                            |  6 ++----
+ runtime/nodes.go                      | 13 ++++++------
+ runtime/nodes_test.go                 |  6 ++----
+ webserver/webserver.go                |  3 +--
+ 20 files changed, 72 insertions(+), 152 deletions(-)
+
+diff --git a/cmd/config.go b/cmd/config.go
+index 21ab5dd..ff145c2 100644
+--- a/cmd/config.go
++++ b/cmd/config.go
+@@ -5,12 +5,11 @@ import (
+ 	"io/ioutil"
+ 	"os"
+ 
+-	"github.com/naoina/toml"
+-
+ 	"github.com/FreifunkBremen/yanic/database"
+ 	"github.com/FreifunkBremen/yanic/respond"
+ 	"github.com/FreifunkBremen/yanic/runtime"
+ 	"github.com/FreifunkBremen/yanic/webserver"
++	"github.com/naoina/toml"
+ )
+ 
+ // Config represents the whole configuration
+diff --git a/cmd/import.go b/cmd/import.go
+index 89ff203..a110376 100644
+--- a/cmd/import.go
++++ b/cmd/import.go
+@@ -1,12 +1,12 @@
+ package cmd
+ 
+ import (
+-	"github.com/bdlm/log"
+-	"github.com/spf13/cobra"
++	"log"
+ 
+ 	allDatabase "github.com/FreifunkBremen/yanic/database/all"
+ 	"github.com/FreifunkBremen/yanic/rrd"
+ 	"github.com/FreifunkBremen/yanic/runtime"
++	"github.com/spf13/cobra"
+ )
+ 
+ // importCmd represents the import command
+@@ -23,11 +23,11 @@ var importCmd = &cobra.Command{
+ 
+ 		err := allDatabase.Start(config.Database)
+ 		if err != nil {
+-			log.Panicf("could not connect to database: %s", err)
++			panic(err)
+ 		}
+ 		defer allDatabase.Close()
+ 
+-		log.Infof("importing RRD from %s", path)
++		log.Println("importing RRD from", path)
+ 
+ 		for ds := range rrd.Read(path) {
+ 			allDatabase.Conn.InsertGlobals(
+diff --git a/cmd/query.go b/cmd/query.go
+index 28cb50e..7478d63 100644
+--- a/cmd/query.go
++++ b/cmd/query.go
+@@ -2,16 +2,14 @@ package cmd
+ 
+ import (
+ 	"encoding/json"
+-	"fmt"
++	"log"
+ 	"net"
+ 	"strings"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+-	"github.com/spf13/cobra"
+-
+ 	"github.com/FreifunkBremen/yanic/respond"
+ 	"github.com/FreifunkBremen/yanic/runtime"
++	"github.com/spf13/cobra"
+ )
+ 
+ var (
+@@ -30,10 +28,7 @@ var queryCmd = &cobra.Command{
+ 		ifaces := strings.Split(args[0], ",")
+ 		dstAddress := net.ParseIP(args[1])
+ 
+-		log.WithFields(map[string]interface{}{
+-			"address": dstAddress,
+-			"ifaces":  ifaces,
+-		}).Info("sending request")
++		log.Printf("Sending request address=%s ifaces=%s", dstAddress, ifaces)
+ 
+ 		var ifacesConfigs []respond.InterfaceConfig
+ 		for _, iface := range ifaces {
+@@ -57,13 +52,13 @@ var queryCmd = &cobra.Command{
+ 		for id, data := range nodes.List {
+ 			jq, err := json.Marshal(data)
+ 			if err != nil {
+-				fmt.Printf("%s: %+v", id, data)
++				log.Printf("%s: %+v", id, data)
+ 			} else {
+ 				jqNeighbours, err := json.Marshal(data.Neighbours)
+ 				if err != nil {
+-					fmt.Printf("%s: %s neighbours: %+v", id, string(jq), data.Neighbours)
++					log.Printf("%s: %s neighbours: %+v", id, string(jq), data.Neighbours)
+ 				} else {
+-					fmt.Printf("%s: %s neighbours: %s", id, string(jq), string(jqNeighbours))
++					log.Printf("%s: %s neighbours: %s", id, string(jq), string(jqNeighbours))
+ 				}
+ 			}
+ 		}
+diff --git a/cmd/root.go b/cmd/root.go
+index 724baa0..fa44800 100644
+--- a/cmd/root.go
++++ b/cmd/root.go
+@@ -2,16 +2,14 @@ package cmd
+ 
+ import (
+ 	"fmt"
++	"log"
+ 	"os"
+ 
+-	"github.com/bdlm/log"
+-	"github.com/bdlm/std/logger"
+ 	"github.com/spf13/cobra"
+ )
+ 
+ var (
+ 	timestamps bool
+-	loglevel   uint32
+ )
+ 
+ // RootCmd represents the base command when called without any subcommands
+@@ -37,12 +35,12 @@ func init() {
+ 	// Cobra supports persistent flags, which, if defined here,
+ 	// will be global for your application.
+ 	RootCmd.PersistentFlags().BoolVar(&timestamps, "timestamps", false, "Enables timestamps for log output")
+-	RootCmd.PersistentFlags().Uint32Var(&loglevel, "loglevel", 40, "Show log message starting at level")
+ }
+ 
+ func initConfig() {
+-	log.SetLevel(logger.Level(loglevel))
+-	log.SetFormatter(&log.TextFormatter{
+-		DisableTimestamp: timestamps,
+-	})
++	if timestamps {
++		log.SetFlags(log.Lshortfile)
++	} else {
++		log.SetFlags(log.LstdFlags | log.Lshortfile)
++	}
+ }
+diff --git a/cmd/serve.go b/cmd/serve.go
+index 2b1f648..d81eae8 100644
+--- a/cmd/serve.go
++++ b/cmd/serve.go
+@@ -1,19 +1,18 @@
+ package cmd
+ 
+ import (
++	"log"
+ 	"os"
+ 	"os/signal"
+ 	"syscall"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+-	"github.com/spf13/cobra"
+-
+ 	allDatabase "github.com/FreifunkBremen/yanic/database/all"
+ 	allOutput "github.com/FreifunkBremen/yanic/output/all"
+ 	"github.com/FreifunkBremen/yanic/respond"
+ 	"github.com/FreifunkBremen/yanic/runtime"
+ 	"github.com/FreifunkBremen/yanic/webserver"
++	"github.com/spf13/cobra"
+ )
+ 
+ // serveCmd represents the serve command
+@@ -26,7 +25,7 @@ var serveCmd = &cobra.Command{
+ 
+ 		err := allDatabase.Start(config.Database)
+ 		if err != nil {
+-			log.Panicf("could not connect to database: %s", err)
++			panic(err)
+ 		}
+ 		defer allDatabase.Close()
+ 
+@@ -35,12 +34,12 @@ var serveCmd = &cobra.Command{
+ 
+ 		err = allOutput.Start(nodes, config.Nodes)
+ 		if err != nil {
+-			log.Panicf("error on init outputs: %s", err)
++			panic(err)
+ 		}
+ 		defer allOutput.Close()
+ 
+ 		if config.Webserver.Enable {
+-			log.Infof("starting webserver on %s", config.Webserver.Bind)
++			log.Println("starting webserver on", config.Webserver.Bind)
+ 			srv := webserver.New(config.Webserver.Bind, config.Webserver.Webroot)
+ 			go webserver.Start(srv)
+ 			defer srv.Close()
+@@ -51,7 +50,7 @@ var serveCmd = &cobra.Command{
+ 			if duration := config.Respondd.Synchronize.Duration; duration > 0 {
+ 				now := time.Now()
+ 				delay := duration - now.Sub(now.Truncate(duration))
+-				log.Infof("delaying %0.1f seconds", delay.Seconds())
++				log.Printf("delaying %0.1f seconds", delay.Seconds())
+ 				time.Sleep(delay)
+ 			}
+ 
+@@ -64,7 +63,7 @@ var serveCmd = &cobra.Command{
+ 		sigs := make(chan os.Signal, 1)
+ 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+ 		sig := <-sigs
+-		log.Infof("received %s", sig)
++		log.Println("received", sig)
+ 
+ 	},
+ }
+diff --git a/database/all/connection.go b/database/all/connection.go
+index e85bfaa..2c69828 100644
+--- a/database/all/connection.go
++++ b/database/all/connection.go
+@@ -2,10 +2,9 @@ package all
+ 
+ import (
+ 	"fmt"
++	"log"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+-
+ 	"github.com/FreifunkBremen/yanic/database"
+ 	"github.com/FreifunkBremen/yanic/runtime"
+ )
+@@ -20,7 +19,7 @@ func Connect(allConnection map[string]interface{}) (database.Connection, error)
+ 	for dbType, conn := range database.Adapters {
+ 		configForType := allConnection[dbType]
+ 		if configForType == nil {
+-			log.WithField("database", dbType).Infof("no configuration found")
++			log.Printf("the output type '%s' has no configuration", dbType)
+ 			continue
+ 		}
+ 		dbConfigs, ok := configForType.([]interface{})
+diff --git a/database/graphite/database.go b/database/graphite/database.go
+index c567c62..c37cbc1 100644
+--- a/database/graphite/database.go
++++ b/database/graphite/database.go
+@@ -1,12 +1,11 @@
+ package graphite
+ 
+ import (
++	"log"
+ 	"sync"
+ 
+-	"github.com/bdlm/log"
+-	"github.com/fgrosse/graphigo"
+-
+ 	"github.com/FreifunkBremen/yanic/database"
++	"github.com/fgrosse/graphigo"
+ )
+ 
+ const (
+@@ -70,7 +69,7 @@ func (c *Connection) addWorker() {
+ 	for point := range c.points {
+ 		err := c.client.SendAll(point)
+ 		if err != nil {
+-			log.WithField("database", "graphite").Fatal(err)
++			log.Fatal(err)
+ 			return
+ 		}
+ 	}
+diff --git a/database/influxdb/database.go b/database/influxdb/database.go
+index 3feb153..60b696a 100644
+--- a/database/influxdb/database.go
++++ b/database/influxdb/database.go
+@@ -1,10 +1,10 @@
+ package influxdb
+ 
+ import (
++	"log"
+ 	"sync"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+ 	"github.com/influxdata/influxdb1-client/models"
+ 	"github.com/influxdata/influxdb1-client/v2"
+ 
+@@ -100,16 +100,13 @@ func (conn *Connection) addPoint(name string, tags models.Tags, fields models.Fi
+ 			if value, ok := valueInterface.(string); ok && tags.Get([]byte(tag)) == nil {
+ 				tags.SetString(tag, value)
+ 			} else {
+-				log.WithFields(map[string]interface{}{
+-					"name": name,
+-					"tag":  tag,
+-				}).Warnf("count not save tag configuration on point")
++				log.Println(name, "could not saved configured value of tag", tag)
+ 			}
+ 		}
+ 	}
+ 	point, err := client.NewPoint(name, tags.Map(), fields, t...)
+ 	if err != nil {
+-		log.Panicf("count not save points: %s", err)
++		panic(err)
+ 	}
+ 	conn.points <- point
+ }
+@@ -159,10 +156,10 @@ func (conn *Connection) addWorker() {
+ 
+ 		// write batch now?
+ 		if bp != nil && (writeNow || closed || len(bp.Points()) >= batchMaxSize) {
+-			log.WithField("count", len(bp.Points())).Info("saving points")
++			log.Println("saving", len(bp.Points()), "points")
+ 
+ 			if err = conn.client.Write(bp); err != nil {
+-				log.Error(err)
++				log.Print(err)
+ 			}
+ 			writeNow = false
+ 			bp = nil
+diff --git a/database/logging/file.go b/database/logging/file.go
+index c9745b0..2514e54 100644
+--- a/database/logging/file.go
++++ b/database/logging/file.go
+@@ -7,6 +7,7 @@ package logging
+  */
+ import (
+ 	"fmt"
++	"log"
+ 	"os"
+ 	"time"
+ 
+@@ -63,6 +64,6 @@ func (conn *Connection) Close() {
+ }
+ 
+ func (conn *Connection) log(v ...interface{}) {
+-	fmt.Println(v...)
++	log.Println(v...)
+ 	conn.file.WriteString(fmt.Sprintln("[", time.Now().String(), "]", v))
+ }
+diff --git a/database/respondd/main.go b/database/respondd/main.go
+index 1f38c2c..23d559f 100644
+--- a/database/respondd/main.go
++++ b/database/respondd/main.go
+@@ -7,11 +7,10 @@ import (
+ 	"bufio"
+ 	"compress/flate"
+ 	"encoding/json"
++	"log"
+ 	"net"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+-
+ 	"github.com/FreifunkBremen/yanic/data"
+ 	"github.com/FreifunkBremen/yanic/database"
+ 	"github.com/FreifunkBremen/yanic/runtime"
+@@ -60,7 +59,7 @@ func (conn *Connection) InsertNode(node *runtime.Node) {
+ 
+ 	flater, err := flate.NewWriter(writer, flate.BestCompression)
+ 	if err != nil {
+-		log.Errorf("[database-yanic] could not create flater: %s", err)
++		log.Printf("[database-yanic] could not create flater: %s", err)
+ 		return
+ 	}
+ 	defer flater.Close()
+@@ -70,16 +69,16 @@ func (conn *Connection) InsertNode(node *runtime.Node) {
+ 		if node.Nodeinfo != nil && node.Nodeinfo.NodeID != "" {
+ 			nodeid = node.Nodeinfo.NodeID
+ 		}
+-		log.WithField("node_id", nodeid).Errorf("[database-yanic] could not encode node: %s", err)
++		log.Printf("[database-yanic] could not encode %s node: %s", nodeid, err)
+ 		return
+ 	}
+ 	err = flater.Flush()
+ 	if err != nil {
+-		log.Errorf("[database-yanic] could not compress: %s", err)
++		log.Printf("[database-yanic] could not compress: %s", err)
+ 	}
+ 	err = writer.Flush()
+ 	if err != nil {
+-		log.Errorf("[database-yanic] could not send: %s", err)
++		log.Printf("[database-yanic] could not send: %s", err)
+ 	}
+ }
+ 
+diff --git a/main.go b/main.go
+index 6e63ad2..7f432e3 100644
+--- a/main.go
++++ b/main.go
+@@ -1,42 +1,7 @@
+ package main
+ 
+-import (
+-	"os"
+-
+-	"github.com/bdlm/log"
+-	stdLogger "github.com/bdlm/std/logger"
+-
+-	"github.com/FreifunkBremen/yanic/cmd"
+-)
+-
+-type Hook struct{}
+-
+-func (hook *Hook) Fire(entry *log.Entry) error {
+-	switch entry.Level {
+-	case log.PanicLevel:
+-		entry.Logger.Out = os.Stderr
+-	case log.FatalLevel:
+-		entry.Logger.Out = os.Stderr
+-	case log.ErrorLevel:
+-		entry.Logger.Out = os.Stderr
+-	case log.WarnLevel:
+-		entry.Logger.Out = os.Stdout
+-	case log.InfoLevel:
+-		entry.Logger.Out = os.Stdout
+-	case log.DebugLevel:
+-		entry.Logger.Out = os.Stdout
+-	default:
+-	}
+-
+-	return nil
+-}
+-
+-func (hook *Hook) Levels() []stdLogger.Level {
+-	return log.AllLevels
+-}
++import "github.com/FreifunkBremen/yanic/cmd"
+ 
+ func main() {
+-	log.AddHook(&Hook{})
+-
+ 	cmd.Execute()
+ }
+diff --git a/output/all/output.go b/output/all/output.go
+index 14d1cc1..2977d4b 100644
+--- a/output/all/output.go
++++ b/output/all/output.go
+@@ -2,8 +2,7 @@ package all
+ 
+ import (
+ 	"fmt"
+-
+-	"github.com/bdlm/log"
++	"log"
+ 
+ 	"github.com/FreifunkBremen/yanic/output"
+ 	"github.com/FreifunkBremen/yanic/output/filter"
+@@ -24,7 +23,7 @@ func Register(configuration map[string]interface{}) (output.Output, error) {
+ 	for outputType, outputRegister := range output.Adapters {
+ 		configForOutput := allOutputs[outputType]
+ 		if configForOutput == nil {
+-			log.WithField("output", outputType).Infof("no configuration found")
++			log.Printf("the output type '%s' has no configuration\n", outputType)
+ 			continue
+ 		}
+ 		outputConfigs, ok := configForOutput.([]interface{})
+diff --git a/output/filter/filter.go b/output/filter/filter.go
+index c83ec7c..137d2ba 100644
+--- a/output/filter/filter.go
++++ b/output/filter/filter.go
+@@ -3,10 +3,8 @@ package filter
+ import (
+ 	"fmt"
+ 
+-	"github.com/bdlm/log"
+-	"github.com/pkg/errors"
+-
+ 	"github.com/FreifunkBremen/yanic/runtime"
++	"github.com/pkg/errors"
+ )
+ 
+ // factory function for building a filter
+@@ -26,7 +24,7 @@ var filters = make(map[string]factory)
+ // Register registers a new filter
+ func Register(name string, f factory) {
+ 	if _, ok := filters[name]; ok {
+-		log.WithField("filter", name).Panic("filter already registered")
++		panic("already registered: " + name)
+ 	}
+ 	filters[name] = f
+ }
+diff --git a/output/meshviewer-ffrgb/meshviewer.go b/output/meshviewer-ffrgb/meshviewer.go
+index 7ab0c81..b86a30b 100644
+--- a/output/meshviewer-ffrgb/meshviewer.go
++++ b/output/meshviewer-ffrgb/meshviewer.go
+@@ -2,10 +2,9 @@ package meshviewerFFRGB
+ 
+ import (
+ 	"fmt"
++	"log"
+ 	"strings"
+ 
+-	"github.com/bdlm/log"
+-
+ 	"github.com/FreifunkBremen/yanic/lib/jsontime"
+ 	"github.com/FreifunkBremen/yanic/runtime"
+ )
+@@ -82,13 +81,7 @@ func transform(nodes *runtime.Nodes) *Meshviewer {
+ 					if link.Type == LINK_TYPE_FALLBACK {
+ 						link.Type = linkType
+ 					} else {
+-						log.WithFields(map[string]interface{}{
+-							"link":   fmt.Sprintf("%s-%s", linkOrigin.SourceAddress, linkOrigin.TargetAddress),
+-							"prev":   link.Type,
+-							"new":    linkType,
+-							"source": typeList[linkOrigin.SourceAddress],
+-							"target": typeList[linkOrigin.TargetAddress],
+-						}).Warn("different linktypes")
++						log.Printf("different linktypes for '%s' - '%s' prev: '%s' new: '%s' source: '%s' target: '%s'", linkOrigin.SourceAddress, linkOrigin.TargetAddress, link.Type, linkType, typeList[linkOrigin.SourceAddress], typeList[linkOrigin.TargetAddress])
+ 					}
+ 				}
+ 
+diff --git a/output/meshviewer/output.go b/output/meshviewer/output.go
+index b37e7de..df1a94c 100644
+--- a/output/meshviewer/output.go
++++ b/output/meshviewer/output.go
+@@ -2,8 +2,7 @@ package meshviewer
+ 
+ import (
+ 	"fmt"
+-
+-	"github.com/bdlm/log"
++	"log"
+ 
+ 	"github.com/FreifunkBremen/yanic/output"
+ 	"github.com/FreifunkBremen/yanic/runtime"
+diff --git a/respond/collector.go b/respond/collector.go
+index 39d1d45..9f1cef8 100644
+--- a/respond/collector.go
++++ b/respond/collector.go
+@@ -5,11 +5,10 @@ import (
+ 	"compress/flate"
+ 	"encoding/json"
+ 	"fmt"
++	"log"
+ 	"net"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+-
+ 	"github.com/FreifunkBremen/yanic/data"
+ 	"github.com/FreifunkBremen/yanic/database"
+ 	"github.com/FreifunkBremen/yanic/lib/jsontime"
+@@ -68,7 +67,7 @@ func (coll *Collector) listenUDP(iface InterfaceConfig) {
+ 	} else {
+ 		addr, err = getUnicastAddr(iface.InterfaceName)
+ 		if err != nil {
+-			log.WithField("iface", iface.InterfaceName).Panic(err)
++			log.Panic(err)
+ 		}
+ 	}
+ 
+@@ -123,16 +122,16 @@ func getUnicastAddr(ifname string) (net.IP, error) {
+ 	if ip != nil {
+ 		return ip, nil
+ 	}
+-	return nil, fmt.Errorf("unable to find a unicast address")
++	return nil, fmt.Errorf("unable to find a unicast address for %s", ifname)
+ }
+ 
+ // Start Collector
+ func (coll *Collector) Start(interval time.Duration) {
+ 	if coll.interval != 0 {
+-		log.Panic("already started")
++		panic("already started")
+ 	}
+ 	if interval <= 0 {
+-		log.Panic("invalid collector interval")
++		panic("invalid collector interval")
+ 	}
+ 	coll.interval = interval
+ 
+@@ -161,7 +160,7 @@ func (coll *Collector) sendOnce() {
+ }
+ 
+ func (coll *Collector) sendMulticast() {
+-	log.Info("sending multicasts")
++	log.Println("sending multicasts")
+ 	for _, conn := range coll.connections {
+ 		if conn.SendRequest {
+ 			coll.sendPacket(conn.Conn, conn.MulticastAddress)
+@@ -190,16 +189,13 @@ func (coll *Collector) sendUnicasts(seenBefore jsontime.Time) {
+ 			send++
+ 		}
+ 		if send == 0 {
+-			log.WithField("iface", node.Address.Zone).Error("unable to find connection")
++			log.Printf("unable to find connection for %s", node.Address.Zone)
+ 		} else {
+ 			time.Sleep(10 * time.Millisecond)
+ 			count += send
+ 		}
+ 	}
+-	log.WithFields(map[string]interface{}{
+-		"pkg_count":   count,
+-		"nodes_count": len(nodes),
+-	}).Info("sending unicast pkg")
++	log.Printf("sending %d unicast pkg for %d nodes", count, len(nodes))
+ }
+ 
+ // SendPacket sends a UDP request to the given unicast or multicast address on the first UDP socket
+@@ -216,7 +212,7 @@ func (coll *Collector) sendPacket(conn *net.UDPConn, destination net.IP) {
+ 	}
+ 
+ 	if _, err := conn.WriteToUDP([]byte("GET nodeinfo statistics neighbours"), &addr); err != nil {
+-		log.WithField("address", addr.String()).Errorf("WriteToUDP failed: %s", err)
++		log.Println("WriteToUDP failed:", err)
+ 	}
+ }
+ 
+@@ -238,7 +234,7 @@ func (coll *Collector) sender() {
+ func (coll *Collector) parser() {
+ 	for obj := range coll.queue {
+ 		if data, err := obj.parse(); err != nil {
+-			log.WithField("address", obj.Address.String()).Errorf("unable to decode response %s", err)
++			log.Println("unable to decode response from", obj.Address.String(), err)
+ 		} else {
+ 			coll.saveResponse(obj.Address, data)
+ 		}
+@@ -270,10 +266,7 @@ func (coll *Collector) saveResponse(addr *net.UDPAddr, res *data.ResponseData) {
+ 
+ 	// Check length of nodeID
+ 	if len(nodeID) != 12 {
+-		log.WithFields(map[string]interface{}{
+-			"node_id": nodeID,
+-			"address": addr.String(),
+-		}).Warn("invalid NodeID")
++		log.Printf("invalid NodeID '%s' from %s", nodeID, addr.String())
+ 		return
+ 	}
+ 
+@@ -313,14 +306,7 @@ func (coll *Collector) receiver(conn *net.UDPConn) {
+ 		n, src, err := conn.ReadFromUDP(buf)
+ 
+ 		if err != nil {
+-			if conn != nil {
+-				log.WithFields(map[string]interface{}{
+-					"local":  conn.LocalAddr(),
+-					"remote": conn.RemoteAddr(),
+-				}).Errorf("ReadFromUDP failed: %s", err)
+-			} else {
+-				log.Errorf("ReadFromUDP failed: %s", err)
+-			}
++			log.Println("ReadFromUDP failed:", err)
+ 			return
+ 		}
+ 
+diff --git a/rrd/rrd.go b/rrd/rrd.go
+index 9131193..725f302 100644
+--- a/rrd/rrd.go
++++ b/rrd/rrd.go
+@@ -9,8 +9,6 @@ import (
+ 	"strconv"
+ 	"strings"
+ 	"time"
+-
+-	"github.com/bdlm/log"
+ )
+ 
+ var linePattern = regexp.MustCompile("^<!-- ....-..-.. ..:..:.. [A-Z]+ / (\\d+) --> <row><v>([^<]+)</v><v>([^<]+)</v></row>")
+@@ -29,10 +27,10 @@ func Read(rrdFile string) chan Dataset {
+ 	stdout, err := cmd.StdoutPipe()
+ 
+ 	if err != nil {
+-		log.Panicf("error on get stdout: %s", err)
++		panic(err)
+ 	}
+ 	if err := cmd.Start(); err != nil {
+-		log.Panicf("error on start rrdtool: %s", err)
++		panic(err)
+ 	}
+ 
+ 	r := bufio.NewReader(stdout)
+diff --git a/runtime/nodes.go b/runtime/nodes.go
+index a4f0b08..1167cdf 100644
+--- a/runtime/nodes.go
++++ b/runtime/nodes.go
+@@ -2,12 +2,11 @@ package runtime
+ 
+ import (
+ 	"encoding/json"
++	"log"
+ 	"os"
+ 	"sync"
+ 	"time"
+ 
+-	"github.com/bdlm/log"
+-
+ 	"github.com/FreifunkBremen/yanic/data"
+ 	"github.com/FreifunkBremen/yanic/lib/jsontime"
+ )
+@@ -187,7 +186,7 @@ func (nodes *Nodes) readIfaces(nodeinfo *data.Nodeinfo) {
+ 	network := nodeinfo.Network
+ 
+ 	if nodeID == "" {
+-		log.Warn("nodeID missing in nodeinfo")
++		log.Println("nodeID missing in nodeinfo")
+ 		return
+ 	}
+ 
+@@ -203,7 +202,7 @@ func (nodes *Nodes) readIfaces(nodeinfo *data.Nodeinfo) {
+ 		}
+ 		if oldNodeID, _ := nodes.ifaceToNodeID[addr]; oldNodeID != nodeID {
+ 			if oldNodeID != "" {
+-				log.Warnf("override nodeID from %s to %s on MAC address %s", oldNodeID, nodeID, addr)
++				log.Printf("override nodeID from %s to %s on MAC address %s", oldNodeID, nodeID, addr)
+ 			}
+ 			nodes.ifaceToNodeID[addr] = nodeID
+ 		}
+@@ -215,7 +214,7 @@ func (nodes *Nodes) load() {
+ 
+ 	if f, err := os.Open(path); err == nil { // transform data to legacy meshviewer
+ 		if err = json.NewDecoder(f).Decode(nodes); err == nil {
+-			log.Infof("loaded %d nodes", len(nodes.List))
++			log.Println("loaded", len(nodes.List), "nodes")
+ 
+ 			nodes.Lock()
+ 			for _, node := range nodes.List {
+@@ -226,10 +225,10 @@ func (nodes *Nodes) load() {
+ 			nodes.Unlock()
+ 
+ 		} else {
+-			log.Errorf("failed to unmarshal nodes: %s", err)
++			log.Println("failed to unmarshal nodes:", err)
+ 		}
+ 	} else {
+-		log.Errorf("failed to load cached nodes: %s", err)
++		log.Println("failed to load cached nodes:", err)
+ 	}
+ }
+ 
+diff --git a/runtime/nodes_test.go b/runtime/nodes_test.go
+index 0212afc..0474a2b 100644
+--- a/runtime/nodes_test.go
++++ b/runtime/nodes_test.go
+@@ -70,15 +70,13 @@ func TestLoadAndSave(t *testing.T) {
+ 	nodes.save()
+ 	os.Remove(tmpfile.Name())
+ 
+-	assert.Panics(func() {
++	assert.PanicsWithValue("open /dev/null.tmp: permission denied", func() {
+ 		SaveJSON(nodes, "/dev/null")
+-		// "open /dev/null.tmp: permission denied",
+ 	})
+ 
+ 	tmpfile, _ = ioutil.TempFile("/tmp", "nodes")
+-	assert.Panics(func() {
++	assert.PanicsWithValue("json: unsupported type: func() string", func() {
+ 		SaveJSON(tmpfile.Name, tmpfile.Name())
+-		// "json: unsupported type: func() string",
+ 	})
+ 	os.Remove(tmpfile.Name())
+ 
+diff --git a/webserver/webserver.go b/webserver/webserver.go
+index 0a27769..54e9dce 100644
+--- a/webserver/webserver.go
++++ b/webserver/webserver.go
+@@ -4,7 +4,6 @@ import (
+ 	"net/http"
+ 
+ 	"github.com/NYTimes/gziphandler"
+-	"github.com/bdlm/log"
+ )
+ 
+ // New creates a new webserver and starts it
+@@ -18,6 +17,6 @@ func New(bindAddr, webroot string) *http.Server {
+ func Start(srv *http.Server) {
+ 	// service connections
+ 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+-		log.Panicf("webserver crashed: %s", err)
++		panic(err)
+ 	}
+ }

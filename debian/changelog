@@ -1,6 +1,7 @@
 yanic (0.0.2+git20190528.4031d82-1) UNRELEASED; urgency=medium
 
   * New upstream snaphot.
+  * Revert new upstream dependencies for bdlm/log and influxdb1-client
 
  -- Sven Eckelmann <sven@narfation.org>  Sun, 06 Oct 2019 13:08:21 +0200
 

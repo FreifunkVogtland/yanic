@@ -1,0 +1,40 @@
+From: Sven Eckelmann <sven@narfation.org>
+Date: Sun, 6 Oct 2019 13:17:54 +0200
+Subject: Revert "not export logging stdout / stderr hook"
+
+This reverts commit 94267cf6dd03abacb35018a49c34532d824ce28d.
+---
+ main.go | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/main.go b/main.go
+index 86e6718..6e63ad2 100644
+--- a/main.go
++++ b/main.go
+@@ -9,9 +9,9 @@ import (
+ 	"github.com/FreifunkBremen/yanic/cmd"
+ )
+ 
+-type hook struct{}
++type Hook struct{}
+ 
+-func (h *hook) Fire(entry *log.Entry) error {
++func (hook *Hook) Fire(entry *log.Entry) error {
+ 	switch entry.Level {
+ 	case log.PanicLevel:
+ 		entry.Logger.Out = os.Stderr
+@@ -31,12 +31,12 @@ func (h *hook) Fire(entry *log.Entry) error {
+ 	return nil
+ }
+ 
+-func (h *hook) Levels() []stdLogger.Level {
++func (hook *Hook) Levels() []stdLogger.Level {
+ 	return log.AllLevels
+ }
+ 
+ func main() {
+-	log.AddHook(&hook{})
++	log.AddHook(&Hook{})
+ 
+ 	cmd.Execute()
+ }

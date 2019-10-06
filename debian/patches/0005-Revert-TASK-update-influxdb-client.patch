@@ -1,0 +1,288 @@
+From: Sven Eckelmann <sven@narfation.org>
+Date: Sun, 6 Oct 2019 13:21:34 +0200
+Subject: Revert "[TASK] update influxdb-client"
+
+This reverts commit abae92bb5a4e418b309358d62e00453838f79fe9.
+---
+ Gopkg.lock                         | 83 ++++++++------------------------------
+ Gopkg.toml                         |  4 ++
+ database/influxdb/database.go      |  4 +-
+ database/influxdb/database_test.go |  4 +-
+ database/influxdb/global.go        |  2 +-
+ database/influxdb/global_test.go   |  2 +-
+ database/influxdb/link.go          |  2 +-
+ database/influxdb/node.go          |  4 +-
+ database/influxdb/node_test.go     |  2 +-
+ 9 files changed, 30 insertions(+), 77 deletions(-)
+
+diff --git a/Gopkg.lock b/Gopkg.lock
+index bfec60e..1cd397f 100644
+--- a/Gopkg.lock
++++ b/Gopkg.lock
+@@ -2,138 +2,87 @@
+ 
+ 
+ [[projects]]
+-  digest = "1:0803645e1f57fb5271a6edc7570b9ea59bac2e5de67957075a43f3d74c8dbd97"
+   name = "github.com/NYTimes/gziphandler"
+   packages = ["."]
+-  pruneopts = "UT"
+   revision = "2600fb119af974220d3916a5916d6e31176aac1b"
+   version = "v1.0.1"
+ 
+ [[projects]]
+-  digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
+   name = "github.com/davecgh/go-spew"
+   packages = ["spew"]
+-  pruneopts = "UT"
+-  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+-  version = "v1.1.1"
++  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
++  version = "v1.1.0"
+ 
+ [[projects]]
+-  digest = "1:6bea4bd16434bc6699590ed025152b690d08f552eeabfdc3258bd3aff738958c"
+   name = "github.com/fgrosse/graphigo"
+   packages = ["."]
+-  pruneopts = "UT"
+   revision = "55a0a92a703041a55ad5ee2c2647f9577a87fdc1"
+   version = "v2"
+ 
+ [[projects]]
+-  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
+   name = "github.com/inconshreveable/mousetrap"
+   packages = ["."]
+-  pruneopts = "UT"
+   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+   version = "v1.0"
+ 
+ [[projects]]
+-  digest = "1:e0123d1a40d588fb2d5f98188927826ed5ddfa1d50e759596a6c774f71b81358"
+   name = "github.com/influxdata/influxdb"
+-  packages = ["pkg/escape"]
+-  pruneopts = "UT"
+-  revision = "698dbc789aff13c2678357a6b93ff73dd7136571"
+-  version = "v1.7.3"
+-
+-[[projects]]
+-  branch = "master"
+-  digest = "1:22a9593272bc74ef4c513e176608eeed2dee7e8bd7542bae40369cb62d907a3b"
+-  name = "github.com/influxdata/influxdb1-client"
+   packages = [
++    "client/v2",
+     "models",
+-    "v2",
++    "pkg/escape"
+   ]
+-  pruneopts = "UT"
+-  revision = "e237d47d0fc87c8ba2b7c98c349cdceca9c37e27"
++  revision = "02d7d4f043b34ecb4e9b2dbec298c6f9450c2a32"
++  version = "v1.5.2"
+ 
+ [[projects]]
+-  branch = "master"
+-  digest = "1:ac6b73796941a7ab33ec69fc32f9886a6e7506998f822e3d5205377aee77284a"
+-  name = "github.com/influxdata/platform"
+-  packages = [
+-    "models",
+-    "pkg/escape",
+-  ]
+-  pruneopts = "UT"
+-  revision = "98469bf07613ffae6f025893761c1e7a5e96e4aa"
+-
+-[[projects]]
+-  digest = "1:b56c589214f01a5601e0821387db484617392d0042f26234bf2da853a2f498a1"
+   name = "github.com/naoina/go-stringutil"
+   packages = ["."]
+-  pruneopts = "UT"
+   revision = "6b638e95a32d0c1131db0e7fe83775cbea4a0d0b"
+   version = "v0.1.0"
+ 
+ [[projects]]
+-  digest = "1:f58c3d0e46b64878d00652fedba24ee879725191ab919dca7b62586859281c04"
+   name = "github.com/naoina/toml"
+   packages = [
+     ".",
+-    "ast",
++    "ast"
+   ]
+-  pruneopts = "UT"
+   revision = "e6f5723bf2a66af014955e0888881314cf294129"
+   version = "v0.1.1"
+ 
+ [[projects]]
+-  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
+   name = "github.com/pkg/errors"
+   packages = ["."]
+-  pruneopts = "UT"
+-  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+-  version = "v0.8.1"
++  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
++  version = "v0.8.0"
+ 
+ [[projects]]
+-  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
+   name = "github.com/pmezard/go-difflib"
+   packages = ["difflib"]
+-  pruneopts = "UT"
+   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+   version = "v1.0.0"
+ 
+ [[projects]]
+-  digest = "1:645cabccbb4fa8aab25a956cbcbdf6a6845ca736b2c64e197ca7cbb9d210b939"
+   name = "github.com/spf13/cobra"
+   packages = ["."]
+-  pruneopts = "UT"
+-  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
+-  version = "v0.0.3"
++  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
++  version = "v0.0.2"
+ 
+ [[projects]]
+-  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
+   name = "github.com/spf13/pflag"
+   packages = ["."]
+-  pruneopts = "UT"
+-  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+-  version = "v1.0.3"
++  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
++  version = "v1.0.1"
+ 
+ [[projects]]
+-  digest = "1:972c2427413d41a1e06ca4897e8528e5a1622894050e2f527b38ddf0f343f759"
+   name = "github.com/stretchr/testify"
+   packages = ["assert"]
+-  pruneopts = "UT"
+-  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
+-  version = "v1.3.0"
++  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
++  version = "v1.2.1"
+ 
+ [solve-meta]
+   analyzer-name = "dep"
+   analyzer-version = 1
+-  input-imports = [
+-    "github.com/NYTimes/gziphandler",
+-    "github.com/fgrosse/graphigo",
+-    "github.com/influxdata/influxdb1-client/models",
+-    "github.com/influxdata/influxdb1-client/v2",
+-    "github.com/naoina/toml",
+-    "github.com/pkg/errors",
+-    "github.com/spf13/cobra",
+-    "github.com/stretchr/testify/assert",
+-  ]
++  inputs-digest = "fdc5af68ea0267bb24f1826cbc35358e22fc67f2eec5c7ebf91cb6392836a064"
+   solver-name = "gps-cdcl"
+   solver-version = 1
+diff --git a/Gopkg.toml b/Gopkg.toml
+index f504025..1ed8da5 100644
+--- a/Gopkg.toml
++++ b/Gopkg.toml
+@@ -33,6 +33,10 @@
+   name = "github.com/fgrosse/graphigo"
+   version = "2.0.0"
+ 
++[[constraint]]
++  name = "github.com/influxdata/influxdb"
++  version = "1.5.2"
++
+ [[constraint]]
+   name = "github.com/naoina/toml"
+   version = "0.1.1"
+diff --git a/database/influxdb/database.go b/database/influxdb/database.go
+index 60b696a..f580e2e 100644
+--- a/database/influxdb/database.go
++++ b/database/influxdb/database.go
+@@ -5,8 +5,8 @@ import (
+ 	"sync"
+ 	"time"
+ 
+-	"github.com/influxdata/influxdb1-client/models"
+-	"github.com/influxdata/influxdb1-client/v2"
++	"github.com/influxdata/influxdb/client/v2"
++	"github.com/influxdata/influxdb/models"
+ 
+ 	"github.com/FreifunkBremen/yanic/database"
+ )
+diff --git a/database/influxdb/database_test.go b/database/influxdb/database_test.go
+index dce8002..b512d3b 100644
+--- a/database/influxdb/database_test.go
++++ b/database/influxdb/database_test.go
+@@ -6,8 +6,8 @@ import (
+ 	"testing"
+ 	"time"
+ 
+-	"github.com/influxdata/influxdb1-client/models"
+-	"github.com/influxdata/influxdb1-client/v2"
++	"github.com/influxdata/influxdb/client/v2"
++	"github.com/influxdata/influxdb/models"
+ 
+ 	"github.com/stretchr/testify/assert"
+ )
+diff --git a/database/influxdb/global.go b/database/influxdb/global.go
+index 6c4330e..c99e699 100644
+--- a/database/influxdb/global.go
++++ b/database/influxdb/global.go
+@@ -4,7 +4,7 @@ import (
+ 	"time"
+ 
+ 	"github.com/FreifunkBremen/yanic/runtime"
+-	"github.com/influxdata/influxdb1-client/models"
++	"github.com/influxdata/influxdb/models"
+ )
+ 
+ // InsertGlobals implementation of database
+diff --git a/database/influxdb/global_test.go b/database/influxdb/global_test.go
+index 7eadd7f..87d7db8 100644
+--- a/database/influxdb/global_test.go
++++ b/database/influxdb/global_test.go
+@@ -5,7 +5,7 @@ import (
+ 	"testing"
+ 	"time"
+ 
+-	"github.com/influxdata/influxdb1-client/v2"
++	"github.com/influxdata/influxdb/client/v2"
+ 	"github.com/stretchr/testify/assert"
+ 
+ 	"github.com/FreifunkBremen/yanic/data"
+diff --git a/database/influxdb/link.go b/database/influxdb/link.go
+index 1d642ba..9e54303 100644
+--- a/database/influxdb/link.go
++++ b/database/influxdb/link.go
+@@ -4,7 +4,7 @@ import (
+ 	"time"
+ 
+ 	"github.com/FreifunkBremen/yanic/runtime"
+-	models "github.com/influxdata/influxdb1-client/models"
++	models "github.com/influxdata/influxdb/models"
+ )
+ 
+ // InsertLink adds a link data point
+diff --git a/database/influxdb/node.go b/database/influxdb/node.go
+index 9c69d5c..db48d22 100644
+--- a/database/influxdb/node.go
++++ b/database/influxdb/node.go
+@@ -5,8 +5,8 @@ import (
+ 	"strconv"
+ 	"time"
+ 
+-	models "github.com/influxdata/influxdb1-client/models"
+-	client "github.com/influxdata/influxdb1-client/v2"
++	client "github.com/influxdata/influxdb/client/v2"
++	models "github.com/influxdata/influxdb/models"
+ 
+ 	"github.com/FreifunkBremen/yanic/runtime"
+ )
+diff --git a/database/influxdb/node_test.go b/database/influxdb/node_test.go
+index cfc5768..85ee302 100644
+--- a/database/influxdb/node_test.go
++++ b/database/influxdb/node_test.go
+@@ -3,7 +3,7 @@ package influxdb
+ import (
+ 	"testing"
+ 
+-	"github.com/influxdata/influxdb1-client/v2"
++	"github.com/influxdata/influxdb/client/v2"
+ 	"github.com/stretchr/testify/assert"
+ 
+ 	"github.com/FreifunkBremen/yanic/data"

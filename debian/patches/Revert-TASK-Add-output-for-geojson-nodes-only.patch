@@ -1,0 +1,413 @@
+From: Sven Eckelmann <sven@narfation.org>
+Date: Sun, 6 Oct 2019 13:42:34 +0200
+Subject: Revert "[TASK] Add output for geojson nodes only"
+
+This reverts commit 80d42433d8773437ac06472308ea33552d22a100.
+---
+ cmd/config_test.go             |   2 +-
+ config_example.toml            |   5 --
+ docs/docs_configuration.md     |  25 --------
+ output/all/main.go             |   1 -
+ output/geojson/geojson.go      |  89 ----------------------------
+ output/geojson/geojson_test.go | 129 -----------------------------------------
+ output/geojson/output.go       |  46 ---------------
+ output/geojson/output_test.go  |  28 ---------
+ 8 files changed, 1 insertion(+), 324 deletions(-)
+ delete mode 100644 output/geojson/geojson.go
+ delete mode 100644 output/geojson/geojson_test.go
+ delete mode 100644 output/geojson/output.go
+ delete mode 100644 output/geojson/output_test.go
+
+diff --git a/cmd/config_test.go b/cmd/config_test.go
+index 4499a5c..ce6cd61 100644
+--- a/cmd/config_test.go
++++ b/cmd/config_test.go
+@@ -25,7 +25,7 @@ func TestReadConfig(t *testing.T) {
+ 	assert.Contains(config.Respondd.Sites["ffhb"].Domains, "city")
+ 
+ 	// Test output plugins
+-	assert.Len(config.Nodes.Output, 4)
++	assert.Len(config.Nodes.Output, 3)
+ 	outputs := config.Nodes.Output["meshviewer"].([]interface{})
+ 	assert.Len(outputs, 1)
+ 	meshviewer := outputs[0]
+diff --git a/config_example.toml b/config_example.toml
+index c23da7c..dd83cae 100644
+--- a/config_example.toml
++++ b/config_example.toml
+@@ -93,11 +93,6 @@ offline_after = "10m"
+ #longitude_max = 39.72
+ 
+ 
+-# outputs all nodes as points into nodes.geojson
+-[[nodes.output.geojson]]
+-enable   = true
+-path = "/var/www/html/meshviewer/data/nodes.geojson"
+-
+ # definition for the new more compressed meshviewer.json
+ [[nodes.output.meshviewer-ffrgb]]
+ enable   = true
+diff --git a/docs/docs_configuration.md b/docs/docs_configuration.md
+index 820ddaf..917aebc 100644
+--- a/docs/docs_configuration.md
++++ b/docs/docs_configuration.md
+@@ -387,31 +387,6 @@ longitude_max = 39.72
+ 
+ 
+ 
+-## [[nodes.output.geojson]]
+-{% method %}
+-The geojson output produces a geojson file which contains the location data of all monitored nodes to be used to visualize the location of the nodes.
+-It is optimized to be used with [UMap](https://github.com/umap-project/umap) but should work with other tools as well.
+-Here is a public demo provided by Freifunk Muenchen: http://u.osmfr.org/m/328494/
+-{% sample lang="toml" %}
+-```toml
+-[[nodes.output.geojson]]
+-enable   = true
+-path = "/var/www/html/meshviewer/data/nodes.geojson"
+-```
+-{% endmethod %}
+-
+-
+-### path
+-{% method %}
+-The path, where to store nodes.geojson
+-{% sample lang="toml" %}
+-```toml
+-path     = "/var/www/html/meshviewer/data/nodes.geojson"
+-```
+-{% endmethod %}
+-
+-
+-
+ ## [[nodes.output.meshviewer-ffrgb]]
+ {% method %}
+ The new json file format for the [meshviewer](https://github.com/ffrgb/meshviewer) developed in Regensburg.
+diff --git a/output/all/main.go b/output/all/main.go
+index aa104ea..07c9dae 100644
+--- a/output/all/main.go
++++ b/output/all/main.go
+@@ -1,7 +1,6 @@
+ package all
+ 
+ import (
+-	_ "github.com/FreifunkBremen/yanic/output/geojson"
+ 	_ "github.com/FreifunkBremen/yanic/output/meshviewer"
+ 	_ "github.com/FreifunkBremen/yanic/output/meshviewer-ffrgb"
+ 	_ "github.com/FreifunkBremen/yanic/output/nodelist"
+diff --git a/output/geojson/geojson.go b/output/geojson/geojson.go
+deleted file mode 100644
+index d237cfc..0000000
+--- a/output/geojson/geojson.go
++++ /dev/null
+@@ -1,89 +0,0 @@
+-package geojson
+-
+-import (
+-	"strconv"
+-	"strings"
+-
+-	"github.com/FreifunkBremen/yanic/runtime"
+-	"github.com/paulmach/go.geojson"
+-)
+-
+-const (
+-	POINT_UMAP_CLASS         = "Circle"
+-	POINT_UMAP_ONLINE_COLOR  = "Green"
+-	POINT_UMAP_OFFLINE_COLOR = "Red"
+-)
+-
+-func newNodePoint(n *runtime.Node) (point *geojson.Feature) {
+-	nodeinfo := n.Nodeinfo
+-	location := nodeinfo.Location
+-	point = geojson.NewPointFeature([]float64{
+-		location.Longitude,
+-		location.Latitude,
+-	})
+-	point.Properties["id"] = nodeinfo.NodeID
+-	point.Properties["name"] = nodeinfo.Hostname
+-
+-	point.Properties["online"] = n.Online
+-	var description strings.Builder
+-	if n.Online {
+-		description.WriteString("Online\n")
+-		if statistics := n.Statistics; statistics != nil {
+-			point.Properties["clients"] = statistics.Clients.Total
+-			description.WriteString("Clients: " + strconv.Itoa(int(statistics.Clients.Total)) + "\n")
+-		}
+-	} else {
+-		description.WriteString("Offline\n")
+-	}
+-	if nodeinfo.Hardware.Model != "" {
+-		point.Properties["model"] = nodeinfo.Hardware.Model
+-		description.WriteString("Model: " + nodeinfo.Hardware.Model + "\n")
+-	}
+-	if fw := nodeinfo.Software.Firmware; fw.Release != "" {
+-		point.Properties["firmware"] = fw.Release
+-		description.WriteString("Firmware: " + fw.Release + "\n")
+-	}
+-	if nodeinfo.System.SiteCode != "" {
+-		point.Properties["site"] = nodeinfo.System.SiteCode
+-		description.WriteString("Site: " + nodeinfo.System.SiteCode + "\n")
+-	}
+-	if nodeinfo.System.DomainCode != "" {
+-		point.Properties["domain"] = nodeinfo.System.DomainCode
+-		description.WriteString("Domain: " + nodeinfo.System.DomainCode + "\n")
+-	}
+-	if owner := nodeinfo.Owner; owner != nil && owner.Contact != "" {
+-		point.Properties["contact"] = owner.Contact
+-		description.WriteString("Contact: " + owner.Contact + "\n")
+-	}
+-
+-	point.Properties["description"] = description.String()
+-	point.Properties["_umap_options"] = getUMapOptions(n)
+-	return
+-}
+-
+-func getUMapOptions(n *runtime.Node) map[string]string {
+-	result := map[string]string{
+-		"iconClass": POINT_UMAP_CLASS,
+-	}
+-	if n.Online {
+-		result["color"] = POINT_UMAP_ONLINE_COLOR
+-	} else {
+-		result["color"] = POINT_UMAP_OFFLINE_COLOR
+-	}
+-	return result
+-}
+-
+-func transform(nodes *runtime.Nodes) *geojson.FeatureCollection {
+-	nodelist := geojson.NewFeatureCollection()
+-
+-	for _, n := range nodes.List {
+-		if n.Nodeinfo == nil || n.Nodeinfo.Location == nil {
+-			continue
+-		}
+-		point := newNodePoint(n)
+-		if point != nil {
+-			nodelist.Features = append(nodelist.Features, point)
+-		}
+-	}
+-	return nodelist
+-}
+diff --git a/output/geojson/geojson_test.go b/output/geojson/geojson_test.go
+deleted file mode 100644
+index 6c0f4d4..0000000
+--- a/output/geojson/geojson_test.go
++++ /dev/null
+@@ -1,129 +0,0 @@
+-package geojson
+-
+-import (
+-	"testing"
+-
+-	"github.com/stretchr/testify/assert"
+-
+-	"github.com/FreifunkBremen/yanic/data"
+-	"github.com/FreifunkBremen/yanic/runtime"
+-)
+-
+-const (
+-	testNodeDescription string = "Online\nClients: 42\nModel: TP-Link 841\n" +
+-		"Site: mysite\nDomain: domain_42\n"
+-)
+-
+-func TestTransform(t *testing.T) {
+-	testNodes := createTestNodes()
+-	nodes := transform(testNodes)
+-
+-	assert := assert.New(t)
+-	assert.Len(testNodes.List, 4)
+-	assert.Len(nodes.Features, 3)
+-
+-	node := testNodes.List["abcdef012425"]
+-
+-	umap := getUMapOptions(node)
+-	assert.Len(umap, 2)
+-
+-	nodePoint := newNodePoint(node)
+-	assert.Equal(
+-		"abcdef012425",
+-		nodePoint.Properties["id"],
+-	)
+-	assert.Equal(
+-		"TP-Link 841",
+-		nodePoint.Properties["model"],
+-	)
+-	assert.Equal(
+-		uint32(42),
+-		nodePoint.Properties["clients"],
+-	)
+-	assert.Equal(
+-		testNodeDescription,
+-		nodePoint.Properties["description"],
+-	)
+-}
+-
+-func createTestNodes() *runtime.Nodes {
+-	nodes := runtime.NewNodes(&runtime.NodesConfig{})
+-
+-	nodes.AddNode(&runtime.Node{
+-		Online: true,
+-		Statistics: &data.Statistics{
+-			Clients: data.Clients{
+-				Total: 42,
+-			},
+-		},
+-		Nodeinfo: &data.Nodeinfo{
+-			NodeID: "abcdef012425",
+-			Hardware: data.Hardware{
+-				Model: "TP-Link 841",
+-			},
+-			Location: &data.Location{
+-				Latitude:  24,
+-				Longitude: 2,
+-			},
+-			System: data.System{
+-				SiteCode:   "mysite",
+-				DomainCode: "domain_42",
+-			},
+-		},
+-	})
+-
+-	nodeData := &runtime.Node{
+-		Online: true,
+-		Statistics: &data.Statistics{
+-			Clients: data.Clients{
+-				Total: 23,
+-			},
+-		},
+-		Nodeinfo: &data.Nodeinfo{
+-			NodeID: "abcdef012345",
+-			Hardware: data.Hardware{
+-				Model: "TP-Link 842",
+-			},
+-			System: data.System{
+-				SiteCode:   "mysite",
+-				DomainCode: "domain_42",
+-			},
+-		},
+-	}
+-	nodeData.Nodeinfo.Software.Firmware.Release = "2019.1~exp42"
+-	nodes.AddNode(nodeData)
+-
+-	nodes.AddNode(&runtime.Node{
+-		Statistics: &data.Statistics{
+-			Clients: data.Clients{
+-				Total: 2,
+-			},
+-		},
+-		Nodeinfo: &data.Nodeinfo{
+-			NodeID: "112233445566",
+-			Hardware: data.Hardware{
+-				Model: "TP-Link 843",
+-			},
+-			Location: &data.Location{
+-				Latitude:  23,
+-				Longitude: 2,
+-			},
+-		},
+-	})
+-
+-	nodes.AddNode(&runtime.Node{
+-		Nodeinfo: &data.Nodeinfo{
+-			NodeID: "0xdeadbeef0x",
+-			VPN:    true,
+-			Hardware: data.Hardware{
+-				Model: "Xeon Multi-Core",
+-			},
+-			Location: &data.Location{
+-				Latitude:  23,
+-				Longitude: 22,
+-			},
+-		},
+-	})
+-
+-	return nodes
+-}
+diff --git a/output/geojson/output.go b/output/geojson/output.go
+deleted file mode 100644
+index d3c1068..0000000
+--- a/output/geojson/output.go
++++ /dev/null
+@@ -1,46 +0,0 @@
+-package geojson
+-
+-import (
+-	"errors"
+-
+-	"github.com/FreifunkBremen/yanic/output"
+-	"github.com/FreifunkBremen/yanic/runtime"
+-)
+-
+-type Output struct {
+-	output.Output
+-	path string
+-}
+-
+-type Config map[string]interface{}
+-
+-func (c Config) Path() string {
+-	if path, ok := c["path"]; ok {
+-		return path.(string)
+-	}
+-	return ""
+-}
+-
+-func init() {
+-	output.RegisterAdapter("geojson", Register)
+-}
+-
+-func Register(configuration map[string]interface{}) (output.Output, error) {
+-	var config Config
+-	config = configuration
+-
+-	if path := config.Path(); path != "" {
+-		return &Output{
+-			path: path,
+-		}, nil
+-	}
+-	return nil, errors.New("no path given")
+-
+-}
+-
+-func (o *Output) Save(nodes *runtime.Nodes) {
+-	nodes.RLock()
+-	defer nodes.RUnlock()
+-
+-	runtime.SaveJSON(transform(nodes), o.path)
+-}
+diff --git a/output/geojson/output_test.go b/output/geojson/output_test.go
+deleted file mode 100644
+index aa1f171..0000000
+--- a/output/geojson/output_test.go
++++ /dev/null
+@@ -1,28 +0,0 @@
+-package geojson
+-
+-import (
+-	"os"
+-	"testing"
+-
+-	"github.com/FreifunkBremen/yanic/runtime"
+-	"github.com/stretchr/testify/assert"
+-)
+-
+-func TestOutput(t *testing.T) {
+-	assert := assert.New(t)
+-
+-	out, err := Register(map[string]interface{}{})
+-	assert.Error(err)
+-	assert.Nil(out)
+-
+-	out, err = Register(map[string]interface{}{
+-		"path": "/tmp/nodes.geojson",
+-	})
+-	os.Remove("/tmp/nodes.geojson")
+-	assert.NoError(err)
+-	assert.NotNil(out)
+-
+-	out.Save(&runtime.Nodes{})
+-	_, err = os.Stat("/tmp/nodes.geojson")
+-	assert.NoError(err)
+-}
