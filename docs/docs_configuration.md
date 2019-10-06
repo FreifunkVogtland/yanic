@@ -52,7 +52,7 @@ synchronize      = "1m"
 {% method %}
 How often send request per respondd.
 
-It will send UDP packets with multicast address `ff02::2:1001` and port `1001`.
+It will send UDP packets with multicast address `ff05::2:1001` and port `1001`.
 If a node does not answer after the half time, it will request with the last know address under the port `1001`.
 {% sample lang="toml" %}
 ```toml
@@ -110,7 +110,7 @@ ifname              = "br-ffhb"
 {% method %}
 ip address is the own address which is used for sending.
 If not set or set with empty string it will take an address of ifname.
-(If `multicast_address` is not set the link local address otherwise a global unicast address)
+(It preferes the link local address, so at babel mesh-network it should be configurated)
 {% sample lang="toml" %}
 ```toml
 ip_address          = "fe80::..."
@@ -130,8 +130,8 @@ send_no_request     = true
 ### multicast_address
 {% method %}
 Multicast address to destination of respondd.
-If not set or set with empty string it will take the batman default multicast address `ff02::2:1001`
-(Needed in babel for a mesh-network wide routeable multicast addreess `ff05::2:1001`)
+If not set or set with empty string it will take the batman default multicast address `ff05::2:1001`
+(Needed to set for legacy `ff02::2:1001`)
 {% sample lang="toml" %}
 ```toml
 multicast_address    = "ff02::2:1001"
@@ -382,6 +382,32 @@ latitude_min = 34.30
 latitude_max = 71.85
 longitude_min = -24.96
 longitude_max = 39.72
+```
+{% endmethod %}
+
+
+
+## [[nodes.output.geojson]]
+{% method %}
+The geojson output produces a geojson file which contains the location data of all monitored nodes to be used to visualize the location of the nodes.
+It is optimized to be used with [UMap](https://github.com/umap-project/umap) but should work with other tools as well.
+
+Here is a public demo provided by Freifunk Muenchen: http://u.osmfr.org/m/328494/
+{% sample lang="toml" %}
+```toml
+[[nodes.output.geojson]]
+enable   = true
+path = "/var/www/html/meshviewer/data/nodes.geojson"
+```
+{% endmethod %}
+
+
+### path
+{% method %}
+The path, where to store nodes.geojson
+{% sample lang="toml" %}
+```toml
+path     = "/var/www/html/meshviewer/data/nodes.geojson"
 ```
 {% endmethod %}
 

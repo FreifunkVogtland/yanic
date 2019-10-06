@@ -3,7 +3,7 @@ package influxdb
 import (
 	"testing"
 
-	"github.com/influxdata/influxdb/client/v2"
+	"github.com/influxdata/influxdb1-client/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/FreifunkBremen/yanic/data"
@@ -39,20 +39,8 @@ func TestToInflux(t *testing.T) {
 				MgmtTx:  &data.Traffic{Packets: 2327},
 				MgmtRx:  &data.Traffic{Bytes: 2331},
 			},
-			MeshVPN: &data.MeshVPN{
-				Groups: map[string]*data.MeshVPNPeerGroup{
-					"ffhb": {
-						Peers: map[string]*data.MeshVPNPeerLink{
-							"vpn01": {Established: 3},
-							"vpn02": {},
-							"trash": nil,
-							"vpn03": {Established: 0},
-						},
-					},
-				},
-			},
 		},
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "deadbeef",
 			Owner: &data.Owner{
 				Contact: "nobody",
@@ -67,6 +55,17 @@ func TestToInflux(t *testing.T) {
 			},
 			Network: data.Network{
 				Mac: "DEADMAC",
+				Mesh: map[string]*data.NetworkInterface{
+					"bat0": {
+						Interfaces: struct {
+							Wireless []string `json:"wireless,omitempty"`
+							Other    []string `json:"other,omitempty"`
+							Tunnel   []string `json:"tunnel,omitempty"`
+						}{
+							Tunnel: []string{"a-interface-mac", "fe80::1"},
+						},
+					},
+				},
 			},
 			Software: data.Software{
 				Autoupdater: struct {
@@ -81,7 +80,7 @@ func TestToInflux(t *testing.T) {
 		Neighbours: &data.Neighbours{
 			NodeID: "deadbeef",
 			Batadv: map[string]data.BatadvNeighbours{
-				"a-interface": {
+				"a-interface-mac": {
 					Neighbours: map[string]data.BatmanLink{
 						"BAFF1E5": {
 							Tq: 204,
@@ -89,14 +88,24 @@ func TestToInflux(t *testing.T) {
 					},
 				},
 			},
+			Babel: map[string]data.BabelNeighbours{
+				"wg-01": {
+					LinkLocalAddress: "fe80::1",
+					Neighbours: map[string]data.BabelLink{
+						"fe80::2": {
+							Cost: 0,
+						},
+					},
+				},
+			},
 			LLDP: map[string]data.LLDPNeighbours{
-				"b-interface": {},
+				"b-interface-mac": {},
 			},
 		},
 	}
 
 	neighbour := &runtime.Node{
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "foobar",
 			Network: data.Network{
 				Mac: "BAFF1E5",
@@ -117,7 +126,7 @@ func TestToInflux(t *testing.T) {
 
 	// do not add a empty statistics of a node
 	droppednode := &runtime.Node{
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "notfound",
 			Network: data.Network{
 				Mac: "instats",
@@ -144,9 +153,10 @@ func TestToInflux(t *testing.T) {
 	assert.EqualValues("city", tags["domain"])
 	assert.EqualValues(0.5, fields["load"])
 	assert.EqualValues(0, fields["neighbours.lldp"])
+	assert.EqualValues(1, fields["neighbours.babel"])
 	assert.EqualValues(1, fields["neighbours.batadv"])
-	assert.EqualValues(1, fields["neighbours.vpn"])
-	assert.EqualValues(1, fields["neighbours.total"])
+	assert.EqualValues(2, fields["neighbours.vpn"])
+	assert.EqualValues(2, fields["neighbours.total"])
 
 	assert.EqualValues(uint32(3), fields["wireless.txpower24"])
 	assert.EqualValues(uint32(5500), fields["airtime11a.frequency"])
@@ -165,7 +175,7 @@ func TestToInflux(t *testing.T) {
 	assert.EqualValues("link", nPoint.Name())
 	assert.EqualValues(map[string]string{
 		"source.id":   "deadbeef",
-		"source.addr": "a-interface",
+		"source.addr": "a-interface-mac",
 		"target.id":   "foobar",
 		"target.addr": "BAFF1E5",
 	}, tags)

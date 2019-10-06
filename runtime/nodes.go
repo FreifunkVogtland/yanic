@@ -2,10 +2,11 @@ package runtime
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/bdlm/log"
 
 	"github.com/FreifunkBremen/yanic/data"
 	"github.com/FreifunkBremen/yanic/lib/jsontime"
@@ -63,8 +64,8 @@ func (nodes *Nodes) Update(nodeID string, res *data.ResponseData) *Node {
 		}
 		nodes.List[nodeID] = node
 	}
-	if res.NodeInfo != nil {
-		nodes.readIfaces(res.NodeInfo)
+	if res.Nodeinfo != nil {
+		nodes.readIfaces(res.Nodeinfo)
 	}
 	nodes.Unlock()
 
@@ -80,7 +81,7 @@ func (nodes *Nodes) Update(nodeID string, res *data.ResponseData) *Node {
 	node.Lastseen = now
 	node.Online = true
 	node.Neighbours = res.Neighbours
-	node.Nodeinfo = res.NodeInfo
+	node.Nodeinfo = res.Nodeinfo
 	node.Statistics = res.Statistics
 
 	return node
@@ -181,12 +182,12 @@ func (nodes *Nodes) expire() {
 }
 
 // adds the nodes interface addresses to the internal map
-func (nodes *Nodes) readIfaces(nodeinfo *data.NodeInfo) {
+func (nodes *Nodes) readIfaces(nodeinfo *data.Nodeinfo) {
 	nodeID := nodeinfo.NodeID
 	network := nodeinfo.Network
 
 	if nodeID == "" {
-		log.Println("nodeID missing in nodeinfo")
+		log.Warn("nodeID missing in nodeinfo")
 		return
 	}
 
@@ -202,7 +203,7 @@ func (nodes *Nodes) readIfaces(nodeinfo *data.NodeInfo) {
 		}
 		if oldNodeID, _ := nodes.ifaceToNodeID[addr]; oldNodeID != nodeID {
 			if oldNodeID != "" {
-				log.Printf("override nodeID from %s to %s on MAC address %s", oldNodeID, nodeID, addr)
+				log.Warnf("override nodeID from %s to %s on MAC address %s", oldNodeID, nodeID, addr)
 			}
 			nodes.ifaceToNodeID[addr] = nodeID
 		}
@@ -214,7 +215,7 @@ func (nodes *Nodes) load() {
 
 	if f, err := os.Open(path); err == nil { // transform data to legacy meshviewer
 		if err = json.NewDecoder(f).Decode(nodes); err == nil {
-			log.Println("loaded", len(nodes.List), "nodes")
+			log.Infof("loaded %d nodes", len(nodes.List))
 
 			nodes.Lock()
 			for _, node := range nodes.List {
@@ -225,10 +226,10 @@ func (nodes *Nodes) load() {
 			nodes.Unlock()
 
 		} else {
-			log.Println("failed to unmarshal nodes:", err)
+			log.Errorf("failed to unmarshal nodes: %s", err)
 		}
 	} else {
-		log.Println("failed to load cached nodes:", err)
+		log.Errorf("failed to load cached nodes: %s", err)
 	}
 }
 

@@ -14,7 +14,7 @@ func TestTransform(t *testing.T) {
 	nodes := runtime.NewNodes(&runtime.NodesConfig{})
 	nodes.AddNode(&runtime.Node{
 		Online: true,
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "node_a",
 			Network: data.Network{
 				Mac: "node:a:mac",
@@ -51,7 +51,7 @@ func TestTransform(t *testing.T) {
 	})
 	nodes.AddNode(&runtime.Node{
 		Online: true,
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "node_c",
 			Network: data.Network{
 				Mac: "node:c:mac",
@@ -69,7 +69,7 @@ func TestTransform(t *testing.T) {
 			},
 		},
 		Neighbours: &data.Neighbours{
-			NodeID: "node_b",
+			NodeID: "node_c",
 			Batadv: map[string]data.BatadvNeighbours{
 				"node:c:mac:lan": {
 					Neighbours: map[string]data.BatmanLink{
@@ -81,7 +81,7 @@ func TestTransform(t *testing.T) {
 	})
 	nodes.AddNode(&runtime.Node{
 		Online: true,
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "node_b",
 			Network: data.Network{
 				Mac: "node:b:mac",
@@ -117,7 +117,7 @@ func TestTransform(t *testing.T) {
 	})
 	nodes.AddNode(&runtime.Node{
 		Online: false,
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
 			NodeID: "node_d",
 			Network: data.Network{
 				Mac: "node:d:mac",
@@ -164,7 +164,7 @@ func TestTransform(t *testing.T) {
 			assert.Equal("other", link.Type)
 			assert.Equal("node:b:mac:lan", link.TargetAddress)
 			assert.Equal(float32(0.2), link.SourceTQ)
-			assert.Equal(float32(0.2), link.TargetTQ)
+			assert.Equal(float32(0), link.TargetTQ)
 			break
 
 		case "node:a:mac:wifi":

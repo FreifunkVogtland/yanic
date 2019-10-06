@@ -12,7 +12,21 @@ func TestRegister(t *testing.T) {
 	assert := assert.New(t)
 	nodes := runtime.NewNodes(&runtime.NodesConfig{})
 	node := NewNode(nodes, &runtime.Node{
-		Nodeinfo: &data.NodeInfo{
+		Nodeinfo: &data.Nodeinfo{
+			Owner: &data.Owner{
+				Contact: "whoami",
+			},
+			Network: data.Network{
+				Mac:       "blub",
+				Addresses: []string{"fe80::1"},
+			},
+		},
+	})
+	assert.NotNil(node)
+	assert.Len(node.Addresses, 1)
+
+	node = NewNode(nodes, &runtime.Node{
+		Nodeinfo: &data.Nodeinfo{
 			Owner: &data.Owner{
 				Contact: "whoami",
 			},
@@ -46,6 +60,7 @@ func TestRegister(t *testing.T) {
 		},
 	})
 	assert.NotNil(node)
+	assert.NotNil(node.Addresses)
 	assert.Equal("whoami", node.Owner)
 	assert.Equal("blub", node.MAC)
 	assert.Equal(13.3, node.Location.Longitude)
